@@ -2,7 +2,10 @@
 
 import numpy as np
 
-
+# Ashutosh Chauhan: S20180010017
+# Ayush Gairola: S20180010020
+# Pradum Singh: S20180010136
+# Vipul Rawat: S20180010192
 class Softmax:
     def __init__(self, n_class: int, lr: float, epochs: int, reg_const: float):
         """Initialize a new classifier.

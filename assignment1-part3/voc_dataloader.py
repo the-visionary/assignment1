@@ -12,7 +12,10 @@ import xml.etree.ElementTree as ET
 import cv2
 
 import matplotlib.pyplot as plt
-
+# Ashutosh Chauhan: S20180010017
+# Ayush Gairola: S20180010020
+# Pradum Singh: S20180010136
+# Vipul Rawat: S20180010192
 VOC_CLASSES = ('__background__', 'aeroplane', 'bicycle', 'bird', 'boat',
                         'bottle', 'bus', 'car', 'cat', 'chair',
                         'cow', 'diningtable', 'dog', 'horse',
@@ -54,7 +57,7 @@ class VocDataset(data.Dataset):
 
         y = self.labels[index]
         z = self.box_indices[index]
-        return x, y, z
+        return x, y
 
     def __len__(self):
         return len(self.names)

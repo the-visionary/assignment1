@@ -4,7 +4,10 @@ from typing import Sequence
 
 import numpy as np
 
-
+# Ashutosh Chauhan: S20180010017
+# Ayush Gairola: S20180010020
+# Pradum Singh: S20180010136
+# Vipul Rawat: S20180010192
 class NeuralNetwork:
     """A multi-layer fully-connected neural network. The net has an input
     dimension of N, a hidden layer dimension of H, and performs classification
