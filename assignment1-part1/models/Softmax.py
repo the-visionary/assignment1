@@ -13,7 +13,6 @@ class Softmax:
             epochs: the number of epochs to train for
             reg_const: the regularization constant
         """
-        self.w = None  # TODO: change this
         self.lr = lr
         self.epochs = epochs
         self.reg_const = reg_const
@@ -34,8 +33,25 @@ class Softmax:
         Returns:
             gradient with respect to weights w; an array of same shape as w
         """
-        # TODO: implement me
-        return
+        #Calculating Cross entropy loss
+        dW = np.zeros_like(self.w)
+        num_train = X_train.shape[0]
+        X = X_train
+        z = np.dot(X, self.w)
+        # print("\noriginal z", z)
+        z -= np.max(z, axis=1, keepdims=True) 
+        # print("\nchanged z",z)
+        p = np.exp(z) / np.sum(np.exp(z), axis=1, keepdims=True) # Softmax function 2x4874(p)
+        L = np.sum(-np.log(p[np.arange(num_train), y_train]))
+        L /= num_train
+        R = np.sum(self.w * self.w)
+        loss = L + R * self.reg_const
+
+        #Calculation of Grad
+        p[np.arange(num_train), y_train] -= 1
+        dW = (1/num_train) * X.T.dot(p) + (self.reg_const * 2 * self.w)
+        return loss, dW
+        # return loss
 
     def train(self, X_train: np.ndarray, y_train: np.ndarray):
         """Train the classifier.
@@ -47,7 +63,28 @@ class Softmax:
                 N examples with D dimensions
             y_train: a numpy array of shape (N,) containing training labels
         """
-        # TODO: implement me
+        
+        x = X_train 
+        N = x.shape[0]
+        dim = x.shape[1]
+        loss_calc = []
+        self.w = np.random.randn(dim,self.n_class) * 0.0001
+        batch_size = 200
+        for itr in range(1, self.epochs+1):
+          X_batch = None
+          y_batch = None
+          batch_indices = np.random.choice(N, batch_size, replace=False)
+          X_batch = X_train[batch_indices]
+          y_batch = y_train[batch_indices]
+            
+          loss, grad = self.calc_gradient(X_batch, y_batch)
+          loss_calc.append(loss)
+          
+          if itr % 100 == 0:
+            print(f"\nLoss in epoch {itr} is {loss}")
+          # print(f"\nGrad in epoch {itr} is {grad}")
+          self.w -= self.lr * grad 
+        print(self.w)
         return
 
     def predict(self, X_test: np.ndarray) -> np.ndarray:
@@ -63,4 +100,7 @@ class Softmax:
                 class.
         """
         # TODO: implement me
-        return
+        y = X_test.dot(self.w)
+        y_pred = np.argmax(y, axis=1)
+        # y_pred = y_pred.reshape((len(y_pred),1))
+        return y_pred

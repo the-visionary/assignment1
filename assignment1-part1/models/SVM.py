@@ -15,30 +15,11 @@ class SVM:
             epochs: the number of epochs to train for
             reg_const: the regularization constant
         """
-        # Size same as X
-        self.w = None  # TODO: change this: OK
         self.alpha = lr
         self.epochs = epochs
         self.reg_const = reg_const
         self.n_class = n_class
-
-    def distances(self, X_train: np.ndarray, y_train: np.ndarray) -> np.ndarray:
-        N = X_train.shape[0]
-        y_train.reshape((N,1))
-        # print('X.W ', np.dot(X_train, self.w).shape)
-        # print('!! X.W ', np.dot(X_train, self.w).dim)
-        # print('Y * X.W ', (y_train.T * np.dot(X_train, self.w) ).shape)
-        # print('!! Y * X.W ', (y_train.T * np.dot(X_train, self.w) ).dim)
-        dist = 1 - y_train * (np.dot(X_train, self.w))
-        dist[dist < 0] = 0
-        return dist
-
-    def cost(self, X_train: np.ndarray, y_train: np.ndarray) -> np.ndarray:
-        N = X_train.shape[0]
-        dist = self.distances(X_train, y_train)
-        hinge_loss = reg_const * np.sum(dist) / N
-        cost = 1/2 * np.dot(self.w.T, self.w) + hinge_loss
-        return cost
+        
 
     def calc_gradient(self, X_train: np.ndarray, y_train: np.ndarray) -> np.ndarray:
         """Calculate gradient of the svm hinge loss.
@@ -56,30 +37,31 @@ class SVM:
             the gradient with respect to weights w; an array of the same shape
                 as w
         """
-        N = X_train.shape[0]
-        cost = self.cost(X_train, y_train)
+        loss = 0.0
+        dW = np.zeros(self.w.shape)
+        num_train = X_train.shape[0]
 
-        dw = np.zeros(self.w.shape)
-        # print('dw ', dw.shape)
-        dist = self.distances(X_train, y_train)
-        # print('dist ', dist.shape)
+        scores = X_train.dot(self.w)
+        # print("cost shape = ", cost.shape)
+        # correct_class_scores = cost[np.arange(num_train), y_train].reshape(num_train,1)
+        correct_class_scores = np.choose(y_train, scores.T)
+        # print("correct_cost shape = ", correct_class_scores.shape)
+        margin = scores - correct_class_scores.reshape(correct_class_scores.shape[0],1) + 1
+        margin[margin <= 0] = 0
+        loss = np.sum(margin) - num_train
+        loss /= num_train
 
-        for i, d in enumerate(dist):
-            d = d.item()
-            # print('d ', d.shape)
-            # print('w ', self.w.shape)
-            # print('y ', y_train[i].shape)
-            # print('x ', X_train[i].shape)
-            x = X_train[i].reshape(X_train.shape[1], 1)
-            y = y_train[i].item()
-            if max(0, d) == 0:
-                di = self.w
-            else:
-                di = self.w - (self.reg_const * y) * x
-            dw += di
+        R = np.sum(self.w * self.w)
+        loss += self.reg_const * R
 
-        dw = dw / N
-        return dw
+        mask = np.zeros(margin.shape)
+        mask[margin > 0] = 1
+        valid_dist_count = margin.sum(axis = 1)
+        mask[range(num_train), y_train] -= valid_dist_count
+        dW = (X_train.T).dot(mask) / num_train
+        dW += self.reg_const * 2 * self.w
+
+        return loss, dW
 
     def train(self, X_train: np.ndarray, y_train: np.ndarray):
         """Train the classifier.
@@ -91,23 +73,24 @@ class SVM:
                 N examples with D dimensions
             y_train: a numpy array of shape (N,) containing training labels
         """
-        N = X_train.shape[0]
+        num_train = X_train.shape[0]
         x_size = X_train.shape[1]
-        self.w = np.array([random()] * x_size).reshape(x_size, 1) # Initialize random weights
+        self.w = np.random.randn(x_size, self.n_class) * 0.001 # Initialize random weights
         # print('W', self.w.shape)
-
-        # grad = self.calc_gradient(X_train, y_train)
+        batch_size = 200
+        loss_calc = []
         for epoch in range(1, self.epochs + 1):
-            # print(f'Epoch #{epoch}')
-            X, Y = shuffle(X_train, y_train)
-            Y = Y.reshape((y_train.shape[0], 1))
-            # print('X ', X.shape)
-            # print('Y ', Y.shape)
-            grad = self.calc_gradient(X, Y)
-            # print('Grad ', grad.shape)
-            self.w = self.w - (self.alpha * grad)
-            cost = self.cost(X_train, y_train)
-            # print(f'Cost: {cost}')
+            X_batch = None
+            y_batch = None
+            X, y = shuffle(X_train, y_train)
+            batch_indices = np.random.choice(num_train, batch_size, replace=False)
+            X_batch = X[batch_indices]
+            y_batch = y[batch_indices]
+            loss, grad = self.calc_gradient(X_batch, y_batch)
+            loss_calc.append(loss)
+            if epoch % 100 == 0:
+                print(f"\nLoss in epoch {epoch} is {loss}")
+            self.w -= (self.alpha * grad)
         print(self.w)
         return
 
@@ -124,4 +107,7 @@ class SVM:
                 class.
         """
         # print(np.sign(X_test @ self.w).shape)
-        return np.sign(X_test @ self.w)
+        y_pred = np.zeros(X_test.shape[0])
+        y = X_test.dot(self.w)
+        y_pred = y.argmax(axis=1)
+        return y_pred

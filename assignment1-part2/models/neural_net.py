@@ -66,8 +66,8 @@ class NeuralNetwork:
         Returns:
             the output
         """
-        # TODO: implement me
-        return
+        output = X.dot(W) + b
+        return output
 
     def relu(self, X: np.ndarray) -> np.ndarray:
         """Rectified Linear Unit (ReLU).
@@ -78,8 +78,7 @@ class NeuralNetwork:
         Returns:
             the output
         """
-        # TODO: implement me
-        return
+        return np.maximum(0, X)
 
     def softmax(self, X: np.ndarray) -> np.ndarray:
         """The softmax function.
@@ -90,8 +89,9 @@ class NeuralNetwork:
         Returns:
             the output
         """
-        # TODO: implement me
-        return
+        X -= np.max(X, axis=1, keepdims=True)
+        output = np.exp(X)/ np.sum(np.exp(X), axis = 1, keepdims=True)
+        return output
 
     def forward(self, X: np.ndarray) -> np.ndarray:
         """Compute the scores for each class for all of the data samples.
@@ -111,7 +111,15 @@ class NeuralNetwork:
         # self.outputs as it will be used during back-propagation. You can use
         # the same keys as self.params. You can use functions like
         # self.linear, self.relu, and self.softmax in here.
-        return
+        W1, b1 = self.params['W1'], self.params['b1']
+        W2, b2 = self.params['W2'], self.params['b2']
+        
+        scores = None
+        z1 = self.linear(W1, X, b1)
+        X2 = self.relu(z1)
+        scores = self.linear(W2, X2, b2)
+        softmax_matrix = self.softmax(scores)
+        return softmax_matrix
 
     def backward(
         self, X: np.ndarray, y: np.ndarray, lr: float, reg: float = 0.0
@@ -131,9 +139,51 @@ class NeuralNetwork:
         """
         self.gradients = {}
         loss = 0.0
+        N, D = X.shape
+        W1, b1 = self.params['W1'], self.params['b1']
+        W2, b2 = self.params['W2'], self.params['b2']
         # TODO: implement me. You'll want to store the gradient of each layer
         # in self.gradients if you want to be able to debug your gradients
         # later. You can use the same keys as self.params. You can add
         # functions like self.linear_grad, self.relu_grad, and
         # self.softmax_grad if it helps organize your code.
+        softmax_matrix = self.forward(X)
+        loss = np.sum(-np.log(softmax_matrix[np.arange(N), y]))
+        loss /= N
+        loss += reg * (np.sum(W2 * W2)) + (np.sum(W1 * W1))
+
+        softmax_matrix[np.arange(N), y] -= 1
+        softmax_matrix /= N
+
+        z1 = self.linear(W1, X, b1)
+        X2 = self.relu(z1)
+        dW2 = X2.T.dot(softmax_matrix)
+        db2 = softmax_matrix.sum(axis=0)
+        
+        dW1 = softmax_matrix.dot(W2.T)   
+        dz1 = dW1 * (z1>0)             
+        dW1 = X.T.dot(dz1)              
+
+        # b1 gradient
+        db1 = dz1.sum(axis=0)
+
+        # regularization gradient
+        dW1 += reg * 2 * W1
+        dW2 += reg * 2 * W2
+
+        self.gradients = {'W1':dW1, 'b1':db1, 'W2':dW2, 'b2':db2}
+        
+        for key in self.params:
+            self.params[key] -= lr * self.gradients[key]
+
         return loss
+
+    def predict(self, X):
+        W1, b1 = self.params['W1'], self.params['b1']
+        W2, b2 = self.params['W2'], self.params['b2']
+        N, D = X.shape
+        fc1 = self.linear(W1,X,b1)
+        X2 = self.relu(fc1)
+        scores = self.linear(W2,X2,b2)
+        y_pred = np.argmax(scores, axis=1)
+        return y_pred
